@@ -1,10 +1,16 @@
 import datetime
+import random
+import string
 
-from flask import Flask, render_template
+from flask import Flask, render_template, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
+from flask_wtf import FlaskForm
+from wtforms import StringField, SubmitField
+from wtforms.validators import DataRequired, URL
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///urls.db'
+app.config['SECRET_KEY'] = 'SECRET_KEY'
 
 db = SQLAlchemy(app)
 
@@ -17,12 +23,38 @@ class URLmodel(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.datetime.now)
 
 
+class URLForm(FlaskForm):
+    original_url = StringField('Вставьте ссылку',
+                               validators=[DataRequired(message='Ссылка не может быть пустой'),
+                                           URL(message='Неверная ссылка')])
+    submit = SubmitField('Получить короткую ссылку')
+
+
 db.create_all()
+
+def generate_random_string(length=6):
+    chars = string.ascii_letters + string.digits
+    return ''.join(random.choice(chars) for _ in range(length))
+
+def get_short():
+    while True:
+        short = generate_random_string()
+        if URLmodel.query.filter(URLmodel.short == short).first():
+            continue
+        return short
 
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
-    return render_template('index.html')
+    form = URLForm()
+    if form.validate_on_submit():
+        url = URLmodel()
+        url.original_url = form.original_url.data
+        url.short = get_short()
+        db.session.add(url)
+        db.session.commit()
+        return redirect(url_for('urls'))
+    return render_template('index.html', form=form)
 
 
 @app.route('/urls', methods=['GET'])
