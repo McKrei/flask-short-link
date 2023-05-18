@@ -5,12 +5,12 @@ app = Flask(__name__)
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
-    return render_template('index.html')
+    return render_template('index.html', current='index')
 
 
 @app.route('/urls', methods=['GET'])
 def urls():
-    return render_template('urls.html')
+    return render_template('urls.html', current='news')
 
 
 @app.route('/<string:short>', methods=['GET'])
